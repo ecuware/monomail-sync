@@ -50,16 +50,19 @@ func InitDb() error {
 	initTaskTable := `
 	CREATE TABLE IF NOT EXISTS Tasks (
 	id INTEGER PRIMARY KEY,
-	source_account VARCHAR(64) NULL,
-	source_server VARCHAR(64) NULL,
-	source_password VARCHAR(64) NULL,
-	destination_account VARCHAR(64) NULL,
-	destination_server VARCHAR(64) NULL,
-	destination_password VARCHAR(64) NULL,
+	source_account VARCHAR(255) NULL,
+	source_server VARCHAR(255) NULL,
+	source_password VARCHAR(255) NULL,
+	destination_account VARCHAR(255) NULL,
+	destination_server VARCHAR(255) NULL,
+	destination_password VARCHAR(255) NULL,
 	started_at INTEGER NULL,
 	ended_at INTEGER NULL,
 	status VARCHAR(64) NULL,
-	logfile VARCHAR(64) NULL
+	logfile VARCHAR(255) NULL,
+	messages_copied INTEGER DEFAULT 0,
+	bytes_transferred BIGINT DEFAULT 0,
+	error_detail TEXT
 	);
 	`
 
@@ -67,6 +70,37 @@ func InitDb() error {
 
 	if err != nil {
 		return fmt.Errorf("error creating task table: %w", err)
+	}
+
+	initAuditLogTable := `
+	CREATE TABLE IF NOT EXISTS AuditLog (
+	id INTEGER PRIMARY KEY,
+	user VARCHAR(64) NULL,
+	action VARCHAR(64) NULL,
+	details TEXT,
+	ip_address VARCHAR(64) NULL,
+	created_at INTEGER NULL
+	);
+	`
+	_, err = db.Exec(initAuditLogTable)
+	if err != nil {
+		return fmt.Errorf("error creating audit log table: %w", err)
+	}
+
+	initSessionTable := `
+	CREATE TABLE IF NOT EXISTS Sessions (
+	id INTEGER PRIMARY KEY,
+	user VARCHAR(64) NULL,
+	ip_address VARCHAR(64) NULL,
+	user_agent VARCHAR(255) NULL,
+	created_at INTEGER NULL,
+	last_activity INTEGER NULL,
+	active INTEGER DEFAULT 1
+	);
+	`
+	_, err = db.Exec(initSessionTable)
+	if err != nil {
+		return fmt.Errorf("error creating sessions table: %w", err)
 	}
 
 	var exists bool
@@ -347,4 +381,104 @@ func GetDashboardStats() (*DashboardStats, error) {
 	}
 
 	return stats, nil
+}
+
+type AuditLogEntry struct {
+	ID        int
+	User      string
+	Action    string
+	Details   string
+	IPAddress string
+	CreatedAt int64
+}
+
+type Session struct {
+	ID           int
+	User         string
+	IPAddress    string
+	UserAgent    string
+	CreatedAt    int64
+	LastActivity int64
+	Active       bool
+}
+
+func AddAuditLog(user, action, details, ipAddress string) error {
+	stmt, err := db.Prepare("INSERT INTO AuditLog(user, action, details, ip_address, created_at) VALUES(?, ?, ?, ?, ?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(user, action, details, ipAddress, time.Now().Unix())
+	return err
+}
+
+func GetAuditLog(limit int) ([]AuditLogEntry, error) {
+	rows, err := db.Query("SELECT id, user, action, details, ip_address, created_at FROM AuditLog ORDER BY created_at DESC LIMIT ?", limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var entries []AuditLogEntry
+	for rows.Next() {
+		var e AuditLogEntry
+		if err := rows.Scan(&e.ID, &e.User, &e.Action, &e.Details, &e.IPAddress, &e.CreatedAt); err != nil {
+			return nil, err
+		}
+		entries = append(entries, e)
+	}
+	return entries, nil
+}
+
+func AddSession(user, ipAddress, userAgent string) (int, error) {
+	stmt, err := db.Prepare("INSERT INTO Sessions(user, ip_address, user_agent, created_at, last_activity, active) VALUES(?, ?, ?, ?, ?, 1)")
+	if err != nil {
+		return 0, err
+	}
+	defer stmt.Close()
+
+	now := time.Now().Unix()
+	result, err := stmt.Exec(user, ipAddress, userAgent, now, now)
+	if err != nil {
+		return 0, err
+	}
+
+	id, _ := result.LastInsertId()
+	return int(id), nil
+}
+
+func UpdateSessionActivity(sessionID int) error {
+	_, err := db.Exec("UPDATE Sessions SET last_activity = ? WHERE id = ?", time.Now().Unix(), sessionID)
+	return err
+}
+
+func GetActiveSessions() ([]Session, error) {
+	rows, err := db.Query("SELECT id, user, ip_address, user_agent, created_at, last_activity, active FROM Sessions WHERE active = 1 ORDER BY last_activity DESC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []Session
+	for rows.Next() {
+		var s Session
+		var active int
+		if err := rows.Scan(&s.ID, &s.User, &s.IPAddress, &s.UserAgent, &s.CreatedAt, &s.LastActivity, &active); err != nil {
+			return nil, err
+		}
+		s.Active = active == 1
+		sessions = append(sessions, s)
+	}
+	return sessions, nil
+}
+
+func TerminateSession(sessionID int) error {
+	_, err := db.Exec("UPDATE Sessions SET active = 0 WHERE id = ?", sessionID)
+	return err
+}
+
+func TerminateAllSessions() error {
+	_, err := db.Exec("UPDATE Sessions SET active = 0")
+	return err
 }

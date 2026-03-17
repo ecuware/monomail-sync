@@ -44,9 +44,16 @@ func InitServer() {
 		ctx.File("favicon.ico")
 	})
 	router.GET("/health", func(ctx *gin.Context) {
+		dbStatus := "healthy"
+		if err := internal.CheckDB(); err != nil {
+			dbStatus = "unhealthy"
+		}
+
 		ctx.JSON(200, gin.H{
-			"status":  "healthy",
-			"version": "1.0.0",
+			"status":    "healthy",
+			"version":   "1.0.0",
+			"db_status": dbStatus,
+			"uptime":    internal.GetUptime(),
 		})
 	})
 	go internal.InitQueue()
@@ -61,6 +68,11 @@ func InitServer() {
 	router.POST("/api/bulk", controller.HandleBulkMigration)
 	router.GET("/api/bulk/status", controller.HandleBulkMigrationStatus)
 	router.GET("/api/stats", controller.HandleGetStats)
+	router.GET("/api/system", controller.HandleGetSystemInfo)
+	router.GET("/api/audit", controller.HandleGetAuditLog)
+	router.GET("/api/sessions", controller.HandleGetSessions)
+	router.POST("/api/sessions/:id/terminate", controller.HandleTerminateSession)
+	router.POST("/api/sessions/terminate-all", controller.HandleTerminateAllSessions)
 	router.POST("/api/validate", controller.HandleValidate)
 	router.POST("/api/search", controller.HandleSearch)
 	router.POST("/auth/login", controller.Login)

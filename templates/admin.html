@@ -47,27 +47,51 @@
 
     <!-- Dashboard Stats -->
     <div class="container p-4 mx-auto">
-        <div class="flex justify-end">
+        <div class="flex justify-center">
             <div class="grid grid-cols-5 gap-4 w-full max-w-4xl">
                 <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
-                    <div class="text-gray-500 text-sm">Total Tasks</div>
-                    <div class="text-3xl font-bold" id="stat-total">-</div>
+                    <div class="text-gray-500 text-sm text-center">Total Tasks</div>
+                    <div class="text-3xl font-bold text-center" id="stat-total">-</div>
                 </div>
                 <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
-                    <div class="text-gray-500 text-sm">Completed</div>
-                    <div class="text-3xl font-bold text-success" id="stat-completed">-</div>
+                    <div class="text-gray-500 text-sm text-center">Completed</div>
+                    <div class="text-3xl font-bold text-success text-center" id="stat-completed">-</div>
                 </div>
                 <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
-                    <div class="text-gray-500 text-sm">Failed</div>
-                    <div class="text-3xl font-bold text-error" id="stat-failed">-</div>
+                    <div class="text-gray-500 text-sm text-center">Failed</div>
+                    <div class="text-3xl font-bold text-error text-center" id="stat-failed">-</div>
                 </div>
                 <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
-                    <div class="text-gray-500 text-sm">In Progress</div>
-                    <div class="text-3xl font-bold text-warning" id="stat-in-progress">-</div>
+                    <div class="text-gray-500 text-sm text-center">In Progress</div>
+                    <div class="text-3xl font-bold text-warning text-center" id="stat-in-progress">-</div>
                 </div>
                 <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
-                    <div class="text-gray-500 text-sm">Success Rate</div>
-                    <div class="text-3xl font-bold text-info" id="stat-success-rate">-</div>
+                    <div class="text-gray-500 text-sm text-center">Success Rate</div>
+                    <div class="text-3xl font-bold text-info text-center" id="stat-success-rate">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- System Info -->
+    <div class="container p-4 mx-auto">
+        <div class="flex justify-center">
+            <div class="grid grid-cols-4 gap-4 w-full max-w-4xl">
+                <div class="bg-backgroundSecondary border border-border rounded-lg p-3 shadow-md">
+                    <div class="text-gray-500 text-xs text-center">Version</div>
+                    <div class="text-xl font-bold text-center" id="sys-version">-</div>
+                </div>
+                <div class="bg-backgroundSecondary border border-border rounded-lg p-3 shadow-md">
+                    <div class="text-gray-500 text-xs text-center">Uptime</div>
+                    <div class="text-xl font-bold text-center" id="sys-uptime">-</div>
+                </div>
+                <div class="bg-backgroundSecondary border border-border rounded-lg p-3 shadow-md">
+                    <div class="text-gray-500 text-xs text-center">Memory</div>
+                    <div class="text-xl font-bold text-center" id="sys-memory">- MB</div>
+                </div>
+                <div class="bg-backgroundSecondary border border-border rounded-lg p-3 shadow-md">
+                    <div class="text-gray-500 text-xs text-center">Goroutines</div>
+                    <div class="text-xl font-bold text-center" id="sys-goroutines">-</div>
                 </div>
             </div>
         </div>
@@ -178,6 +202,33 @@
         </div>
     </div>
 
+    <!-- Sessions & Audit Log Section -->
+    <div class="container p-4 mx-auto">
+        <div class="tabs tabs-boxed mb-4">
+            <a class="tab" onclick="showTab('sessions')">Sessions</a>
+            <a class="tab" onclick="showTab('audit')">Audit Log</a>
+        </div>
+
+        <!-- Sessions Panel -->
+        <div id="sessions-panel" class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold">Active Sessions</h3>
+                <button onclick="terminateAllSessions()" class="btn btn-error btn-sm">Terminate All</button>
+            </div>
+            <div id="sessions-list" class="space-y-2">
+                <p class="text-gray-500">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Audit Log Panel -->
+        <div id="audit-panel" class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md" style="display: none;">
+            <h3 class="text-xl font-semibold mb-4">Audit Log</h3>
+            <div id="audit-list" class="space-y-2 max-h-96 overflow-y-auto">
+                <p class="text-gray-500">Loading...</p>
+            </div>
+        </div>
+    </div>
+
 
     <div class="modal w-screen" id="detailsmodal" :class="model_open ? 'visible opacity-100' : '' ">
         {{ template "log_window.html"}}
@@ -280,8 +331,115 @@
             }
         }
 
+        async function fetchSystemInfo() {
+            try {
+                const response = await fetch('/api/system');
+                const sys = await response.json();
+                document.getElementById('sys-version').textContent = sys.version || '-';
+                document.getElementById('sys-uptime').textContent = sys.uptime || '-';
+                document.getElementById('sys-memory').textContent = (sys.memory_alloc || 0) + ' MB';
+                document.getElementById('sys-goroutines').textContent = sys.goroutines || '-';
+            } catch (e) {
+                console.error('Error fetching system info:', e);
+            }
+        }
+
         fetchStats();
+        fetchSystemInfo();
         setInterval(fetchStats, 5000);
+        setInterval(fetchSystemInfo, 10000);
+
+        function showTab(tabName) {
+            document.getElementById('sessions-panel').style.display = tabName === 'sessions' ? 'block' : 'none';
+            document.getElementById('audit-panel').style.display = tabName === 'audit' ? 'block' : 'none';
+        }
+
+        async function fetchSessions() {
+            try {
+                const response = await fetch('/api/sessions');
+                const sessions = await response.json();
+                const container = document.getElementById('sessions-list');
+                
+                if (sessions.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500">No active sessions</p>';
+                    return;
+                }
+
+                let html = '';
+                sessions.forEach(s => {
+                    const created = new Date(s.created_at * 1000).toLocaleString();
+                    const lastActivity = new Date(s.last_activity * 1000).toLocaleString();
+                    html += `
+                        <div class="flex items-center justify-between p-3 bg-base rounded-lg border border-border">
+                            <div>
+                                <div class="font-semibold">${s.user}</div>
+                                <div class="text-sm text-gray-500">IP: ${s.ip_address}</div>
+                                <div class="text-xs text-gray-400">Last activity: ${lastActivity}</div>
+                            </div>
+                            <button onclick="terminateSession(${s.id})" class="btn btn-error btn-sm">Terminate</button>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error fetching sessions:', e);
+            }
+        }
+
+        async function terminateSession(id) {
+            if (!confirm('Terminate this session?')) return;
+            try {
+                await fetch('/api/sessions/' + id + '/terminate', { method: 'POST' });
+                fetchSessions();
+            } catch (e) {
+                alert('Error terminating session');
+            }
+        }
+
+        async function terminateAllSessions() {
+            if (!confirm('Terminate all sessions?')) return;
+            try {
+                await fetch('/api/sessions/terminate-all', { method: 'POST' });
+                fetchSessions();
+            } catch (e) {
+                alert('Error terminating sessions');
+            }
+        }
+
+        async function fetchAuditLog() {
+            try {
+                const response = await fetch('/api/audit');
+                const logs = await response.json();
+                const container = document.getElementById('audit-list');
+                
+                if (logs.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500">No audit logs</p>';
+                    return;
+                }
+
+                let html = '';
+                logs.forEach(l => {
+                    const date = new Date(l.created_at * 1000).toLocaleString();
+                    html += `
+                        <div class="p-3 bg-base rounded-lg border border-border">
+                            <div class="flex justify-between">
+                                <span class="font-semibold">${l.action}</span>
+                                <span class="text-xs text-gray-500">${date}</span>
+                            </div>
+                            <div class="text-sm">User: ${l.user} | IP: ${l.ip_address}</div>
+                            <div class="text-xs text-gray-400">${l.details || ''}</div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (e) {
+                console.error('Error fetching audit log:', e);
+            }
+        }
+
+        fetchSessions();
+        fetchAuditLog();
+        setInterval(fetchSessions, 10000);
 
         var toggleDark = document.getElementById("theme-dark-toggle");
         var toggleLight = document.getElementById("theme-light-toggle");
