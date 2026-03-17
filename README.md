@@ -1,3 +1,9 @@
+[![Contributors][contributors-shield]][contributors-url]
+[![Forks][forks-shield]][forks-url]
+[![Stargazers][stars-shield]][stars-shield]
+[![Issues][issues-shield]][issues-url]
+[![License][license-shield]][license-url]
+
 # monomail-sync
 
 A web interface for imapsync. Sync emails between IMAP servers with a clean UI.
@@ -67,3 +73,14 @@ go run . -config config/config.yml
 ## License
 
 GPL-3.0
+
+[contributors-shield]: https://img.shields.io/github/contributors/monobilisim/monomail-sync?style=for-the-badge
+[contributors-url]: https://github.com/monobilisim/monomail-sync/graphs/contributors
+[forks-shield]: https://img.shields.io/github/forks/monobilisim/monomail-sync?style=for-the-badge
+[forks-url]: https://github.com/monobilisim/monomail-sync/network/members
+[stars-shield]: https://img.shields.io/github/stars/monobilisim/monomail-sync?style=for-the-badge
+[stars-url]: https://github.com/monobilisim/monomail-sync/stargazers
+[issues-shield]: https://img.shields.io/github/issues/monobilisim/monomail-sync?style=for-the-badge
+[issues-url]: https://github.com/monobilisim/monomail-sync/issues
+[license-shield]: https://img.shields.io/github/license/monobilisim/monomail-sync?style=for-the-badge
+[license-url]: https://github.com/monobilisim/monomail-sync/blob/master/LICENSE
