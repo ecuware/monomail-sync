@@ -56,6 +56,10 @@ func InitQueue() {
 	processPendingTasks()
 }
 
+func TaskChan() chan Task {
+	return taskChan
+}
+
 func AddTask(sourceDetails, destinationDetails Credentials) {
 	task := &Task{
 		ID:                  queue.Len() + 1,

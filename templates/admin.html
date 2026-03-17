@@ -45,6 +45,110 @@
     <!-- Header -->
     {{template "admin_navbar.html"}}
 
+    <!-- Dashboard Stats -->
+    <div class="container p-4 mx-auto">
+        <div class="flex justify-end">
+            <div class="grid grid-cols-5 gap-4 w-full max-w-4xl">
+                <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
+                    <div class="text-gray-500 text-sm">Total Tasks</div>
+                    <div class="text-3xl font-bold" id="stat-total">-</div>
+                </div>
+                <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
+                    <div class="text-gray-500 text-sm">Completed</div>
+                    <div class="text-3xl font-bold text-success" id="stat-completed">-</div>
+                </div>
+                <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
+                    <div class="text-gray-500 text-sm">Failed</div>
+                    <div class="text-3xl font-bold text-error" id="stat-failed">-</div>
+                </div>
+                <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
+                    <div class="text-gray-500 text-sm">In Progress</div>
+                    <div class="text-3xl font-bold text-warning" id="stat-in-progress">-</div>
+                </div>
+                <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
+                    <div class="text-gray-500 text-sm">Success Rate</div>
+                    <div class="text-3xl font-bold text-info" id="stat-success-rate">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Section -->
+    <div class="container p-4 mx-auto">
+        <div class="bg-backgroundSecondary border border-border rounded-lg p-4 shadow-md">
+            <h2 class="text-2xl font-semibold mb-4">IMAP Settings</h2>
+            <form id="settings-form" class="grid gap-4">
+                <div class="grid grid-cols-2 gap-6">
+                    <!-- Source Settings -->
+                    <div class="space-y-4">
+                        <h3 class="text-lg font-semibold border-b pb-2">Source</h3>
+                        <div>
+                            <label class="block font-semibold">Provider</label>
+                            <select id="source_provider" class="select select-bordered w-full" onchange="updateSourceFromProvider()">
+                                <option value="Custom">Custom</option>
+                                <option value="Gmail">Gmail</option>
+                                <option value="Google Workspace">Google Workspace</option>
+                                <option value="Outlook">Outlook</option>
+                                <option value="Yahoo">Yahoo</option>
+                                <option value="Yandex">Yandex</option>
+                                <option value="Zoho Mail">Zoho Mail</option>
+                                <option value="iCloud">iCloud</option>
+                                <option value="GMX">GMX</option>
+                                <option value="ProtonMail">ProtonMail</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold">Server</label>
+                            <input type="text" id="source_server" class="input max-w-full" value="{{.Settings.SourceServer}}">
+                        </div>
+                        <div>
+                            <label class="block font-semibold">Account Prefix</label>
+                            <input type="text" id="source_account_prefix" class="input max-w-full" value="{{.Settings.SourceAccountPrefix}}">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="source_use_tls" class="checkbox" {{if .Settings.SourceUseTLS}}checked{{end}}>
+                            <label for="source_use_tls">Use TLS/SSL</label>
+                        </div>
+                    </div>
+                    <!-- Destination Settings -->
+                    <div class="space-y-4">
+                        <h3 class="text-lg font-semibold border-b pb-2">Destination</h3>
+                        <div>
+                            <label class="block font-semibold">Provider</label>
+                            <select id="destination_provider" class="select select-bordered w-full" onchange="updateDestinationFromProvider()">
+                                <option value="Custom">Custom</option>
+                                <option value="Gmail">Gmail</option>
+                                <option value="Google Workspace">Google Workspace</option>
+                                <option value="Outlook">Outlook</option>
+                                <option value="Yahoo">Yahoo</option>
+                                <option value="Yandex">Yandex</option>
+                                <option value="Zoho Mail">Zoho Mail</option>
+                                <option value="iCloud">iCloud</option>
+                                <option value="GMX">GMX</option>
+                                <option value="ProtonMail">ProtonMail</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-semibold">Server</label>
+                            <input type="text" id="destination_server" class="input max-w-full" value="{{.Settings.DestinationServer}}">
+                        </div>
+                        <div>
+                            <label class="block font-semibold">Account Prefix</label>
+                            <input type="text" id="destination_account_prefix" class="input max-w-full" value="{{.Settings.DestinationAccountPrefix}}">
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="destination_use_tls" class="checkbox" {{if .Settings.DestinationUseTLS}}checked{{end}}>
+                            <label for="destination_use_tls">Use TLS/SSL</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Save Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Table for showing the queue -->
     <div class="container p-4 mx-auto flex gap-4">
         <div class=" flex w-full overflow-x-auto flex-col">
@@ -101,6 +205,84 @@
     </div>
 
     <script>
+        const providers = {
+            "Custom": { host: "", port: 993, useTLS: false },
+            "Gmail": { host: "imap.gmail.com", port: 993, useTLS: true },
+            "Google Workspace": { host: "imap.gmail.com", port: 993, useTLS: true },
+            "Outlook": { host: "outlook.office365.com", port: 993, useTLS: true },
+            "Yahoo": { host: "imap.mail.yahoo.com", port: 993, useTLS: true },
+            "Yandex": { host: "imap.yandex.com", port: 993, useTLS: true },
+            "Zoho Mail": { host: "imap.zoho.com", port: 993, useTLS: true },
+            "iCloud": { host: "imap.mail.me.com", port: 993, useTLS: true },
+            "GMX": { host: "imap.gmx.com", port: 993, useTLS: true },
+            "ProtonMail": { host: "127.0.0.1", port: 1143, useTLS: false }
+        };
+
+        function updateSourceFromProvider() {
+            const select = document.getElementById('source_provider');
+            const provider = providers[select.value];
+            if (select.value === 'Custom') {
+                document.getElementById('source_server').value = '';
+                document.getElementById('source_use_tls').checked = false;
+            } else {
+                document.getElementById('source_server').value = provider.host + ":" + provider.port;
+                document.getElementById('source_use_tls').checked = provider.useTLS;
+            }
+        }
+
+        function updateDestinationFromProvider() {
+            const select = document.getElementById('destination_provider');
+            const provider = providers[select.value];
+            if (select.value === 'Custom') {
+                document.getElementById('destination_server').value = '';
+                document.getElementById('destination_use_tls').checked = false;
+            } else {
+                document.getElementById('destination_server').value = provider.host + ":" + provider.port;
+                document.getElementById('destination_use_tls').checked = provider.useTLS;
+            }
+        }
+
+        document.getElementById('settings-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const settings = {
+                SourceServer: document.getElementById('source_server').value,
+                SourceAccountPrefix: document.getElementById('source_account_prefix').value,
+                SourceUseTLS: document.getElementById('source_use_tls').checked,
+                DestinationServer: document.getElementById('destination_server').value,
+                DestinationAccountPrefix: document.getElementById('destination_account_prefix').value,
+                DestinationUseTLS: document.getElementById('destination_use_tls').checked,
+            };
+            
+            const response = await fetch('/api/settings', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(settings)
+            });
+            
+            if (response.ok) {
+                alert('Settings saved successfully');
+            } else {
+                alert('Error saving settings');
+            }
+        });
+
+        async function fetchStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const stats = await response.json();
+                document.getElementById('stat-total').textContent = stats.total_tasks || 0;
+                document.getElementById('stat-completed').textContent = stats.completed_tasks || 0;
+                document.getElementById('stat-failed').textContent = stats.failed_tasks || 0;
+                document.getElementById('stat-in-progress').textContent = stats.in_progress_tasks || 0;
+                document.getElementById('stat-success-rate').textContent = (stats.success_rate || 0).toFixed(1) + '%';
+            } catch (e) {
+                console.error('Error fetching stats:', e);
+            }
+        }
+
+        fetchStats();
+        setInterval(fetchStats, 5000);
+
         var toggleDark = document.getElementById("theme-dark-toggle");
         var toggleLight = document.getElementById("theme-light-toggle");
 

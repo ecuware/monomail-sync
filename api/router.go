@@ -21,6 +21,11 @@ func InitServer() {
 		log.Error(err)
 	}
 
+	err = internal.InitSettingsTable()
+	if err != nil {
+		log.Error(err)
+	}
+
 	internal.InitLocalizer()
 
 	gin.SetMode(gin.ReleaseMode)
@@ -38,6 +43,12 @@ func InitServer() {
 	router.GET("/favicon.ico", func(ctx *gin.Context) {
 		ctx.File("favicon.ico")
 	})
+	router.GET("/health", func(ctx *gin.Context) {
+		ctx.JSON(200, gin.H{
+			"status":  "healthy",
+			"version": "1.0.0",
+		})
+	})
 	go internal.InitQueue()
 	// API endpoints
 	router.GET("/api/queue", controller.HandleQueue)
@@ -45,6 +56,11 @@ func InitServer() {
 	router.GET("/api/pagination", controller.HandlePagination)
 	router.GET("/api/details", controller.HandleGetLog)
 	router.GET("/api/sync", controller.HandleSync)
+	router.GET("/api/settings", controller.HandleGetSettings)
+	router.PUT("/api/settings", controller.HandleUpdateSettings)
+	router.POST("/api/bulk", controller.HandleBulkMigration)
+	router.GET("/api/bulk/status", controller.HandleBulkMigrationStatus)
+	router.GET("/api/stats", controller.HandleGetStats)
 	router.POST("/api/validate", controller.HandleValidate)
 	router.POST("/api/search", controller.HandleSearch)
 	router.POST("/auth/login", controller.Login)
