@@ -114,7 +114,10 @@ func runBulkMigrationParallel(migrationID int, bm *internal.BulkMigration) {
 				Status:              "In Progress",
 			}
 
-			internal.AddTaskToDB(task)
+			if err := internal.AddTaskToDB(task); err != nil {
+				internal.UpdateBulkAccount(migrationID, index, "failed", 0, 0, 0, "Failed to persist task")
+				return
+			}
 			internal.TaskChan() <- *task
 
 			internal.UpdateBulkAccount(migrationID, index, "completed", 100, 0, 0, "")

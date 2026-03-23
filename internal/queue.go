@@ -72,8 +72,12 @@ func AddTask(sourceDetails, destinationDetails Credentials) {
 		Status:              "Pending",
 	}
 
+	if err := AddTaskToDB(task); err != nil {
+		log.Errorf("Failed to persist task: %v", err)
+		return
+	}
+
 	queue.PushFront(task)
-	AddTaskToDB(task)
 	go func() {
 		taskChan <- *task
 	}()

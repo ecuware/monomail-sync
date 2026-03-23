@@ -23,6 +23,10 @@ var db *sql.DB
 var log = logger.Log
 
 func InitDb() error {
+	if _, err := getEncryptionKey(); err != nil {
+		return fmt.Errorf("encryption key required: %w", err)
+	}
+
 	admin_name = config.Conf.DatabaseInfo.AdminName
 	admin_pass = config.Conf.DatabaseInfo.AdminPass
 	DB_path = config.Conf.DatabaseInfo.DatabasePath
@@ -161,13 +165,22 @@ func GetPassword(username string) (string, error) {
 
 func AddTaskToDB(task *Task) error {
 	log.Info("Adding task to database")
+	encSourcePass, err := EncryptString(task.SourcePassword)
+	if err != nil {
+		return fmt.Errorf("error encrypting source password: %w", err)
+	}
+	encDestPass, err := EncryptString(task.DestinationPassword)
+	if err != nil {
+		return fmt.Errorf("error encrypting destination password: %w", err)
+	}
+
 	stmt, err := db.Prepare("INSERT INTO tasks(source_account, source_server, source_password, destination_account, destination_server, destination_password, started_at, ended_at, status, logfile) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return fmt.Errorf("error preparing statement: %w", err)
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(task.SourceAccount, task.SourceServer, task.SourcePassword, task.DestinationAccount, task.DestinationServer, task.DestinationPassword, task.StartedAt, task.EndedAt, task.Status, task.LogFile)
+	_, err = stmt.Exec(task.SourceAccount, task.SourceServer, encSourcePass, task.DestinationAccount, task.DestinationServer, encDestPass, task.StartedAt, task.EndedAt, task.Status, task.LogFile)
 	if err != nil {
 		return fmt.Errorf("error executing statement: %w", err)
 	}
@@ -251,11 +264,68 @@ func InitializeQueueFromDB() error {
 			return fmt.Errorf("error scanning row: %w", err)
 		}
 
+		sourcePass, err := DecryptString(task.SourcePassword)
+		if err != nil {
+			if errors.Is(err, errValueNotEncrypted) {
+				encSource, encErr := EncryptString(task.SourcePassword)
+				if encErr != nil {
+					return fmt.Errorf("error encrypting legacy source password: %w", encErr)
+				}
+				encDest, encErr := EncryptString(task.DestinationPassword)
+				if encErr != nil {
+					return fmt.Errorf("error encrypting legacy destination password: %w", encErr)
+				}
+				if err := updateTaskPasswords(task.ID, encSource, encDest); err != nil {
+					return fmt.Errorf("error updating legacy passwords: %w", err)
+				}
+			} else {
+				return fmt.Errorf("error decrypting source password: %w", err)
+			}
+		} else {
+			task.SourcePassword = sourcePass
+		}
+
+		destPass, err := DecryptString(task.DestinationPassword)
+		if err != nil {
+			if errors.Is(err, errValueNotEncrypted) {
+				encSource, encErr := EncryptString(task.SourcePassword)
+				if encErr != nil {
+					return fmt.Errorf("error encrypting legacy source password: %w", encErr)
+				}
+				encDest, encErr := EncryptString(task.DestinationPassword)
+				if encErr != nil {
+					return fmt.Errorf("error encrypting legacy destination password: %w", encErr)
+				}
+				if err := updateTaskPasswords(task.ID, encSource, encDest); err != nil {
+					return fmt.Errorf("error updating legacy passwords: %w", err)
+				}
+			} else {
+				return fmt.Errorf("error decrypting destination password: %w", err)
+			}
+		} else {
+			task.DestinationPassword = destPass
+		}
+
 		if task.Status == "In Progress" {
 			task.Status = "Cancelled"
 		}
 
 		queue.PushFront(&task)
+	}
+
+	return nil
+}
+
+func updateTaskPasswords(taskID int, sourcePassword string, destinationPassword string) error {
+	stmt, err := db.Prepare("UPDATE tasks SET source_password = ?, destination_password = ? WHERE id = ?")
+	if err != nil {
+		return fmt.Errorf("error preparing update: %w", err)
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(sourcePassword, destinationPassword, taskID)
+	if err != nil {
+		return fmt.Errorf("error executing update: %w", err)
 	}
 
 	return nil

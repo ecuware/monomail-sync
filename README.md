@@ -11,7 +11,24 @@ A web interface for imapsync. Sync emails between IMAP servers with a clean UI.
 ## Quick Start
 
 ```bash
+export MONOMAIL_SYNC_ENCRYPTION_KEY="<32-byte key or base64-encoded 32 bytes>"
 go run .
+```
+
+## Encryption Key
+
+Task credentials are encrypted at rest. Set `MONOMAIL_SYNC_ENCRYPTION_KEY` before starting the app.
+
+Generate a key (base64, recommended):
+
+```bash
+export MONOMAIL_SYNC_ENCRYPTION_KEY="$(openssl rand -base64 32)"
+```
+
+Or use a raw 32-byte key (exactly 32 chars):
+
+```bash
+export MONOMAIL_SYNC_ENCRYPTION_KEY="0123456789abcdef0123456789abcdef"
 ```
 
 Access at http://localhost:8000

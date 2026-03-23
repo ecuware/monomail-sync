@@ -64,7 +64,7 @@ func testIMAPConnection(server, username, password string, useTLS bool) (bool, s
 
 	var c *client.Client
 	if useTLS {
-		c, err = client.DialTLS(addr, &tls.Config{InsecureSkipVerify: true})
+		c, err = client.DialTLS(addr, &tls.Config{MinVersion: tls.VersionTLS12})
 	} else {
 		c, err = client.Dial(addr)
 	}
